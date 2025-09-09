@@ -1,115 +1,168 @@
-import Image from "next/image";
-import { Geist, Geist_Mono } from "next/font/google";
+import { useState, useEffect } from 'react';  
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
-  subsets: ["latin"],
-});
+// Define Task Interface
+interface Task  {
+    id: number;
+    text: string;
+    completed: boolean;
+    priority: 'Low' | 'Medium' | 'High';
+  }
+export default function Home(){
+  const [tasks, setTasks] = useState<Task[]>([]);
+  const [newTask, setNewTask] = useState<string>('');
+  const [newTaskPriority, setNewTaskPriority] = useState<'Low' | 'Medium' | 'High'>('Medium')
+  const [editingTaskId, setEditingTaskId] = useState<number | null>(null);
+  const [editingTaskText, setEditingTaskText] = useState<string>('');
 
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
-});
+// Load Tasks from localstorage on client-side mount
+  useEffect(() => {
+    if (typeof window !== 'undefined'){
+      const savedTasks = localStorage.getItem('tasks');
+      if (savedTasks){
+        try{
+          setTasks(JSON.parse(savedTasks));
+        } catch(error)
+        {
+          console.error('Error parsing localstorage tasks: ', error);
+      }
+    }
+  }
+  }, []);
 
-export default function Home() {
-  return (
-    <div
-      className={`${geistSans.className} ${geistMono.className} font-sans grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20`}
-    >
-      <main className="flex flex-col gap-[32px] row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="font-mono list-inside list-decimal text-sm/6 text-center sm:text-left">
-          <li className="mb-2 tracking-[-.01em]">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] font-mono font-semibold px-1 py-0.5 rounded">
-              src/pages/index.tsx
-            </code>
-            .
-          </li>
-          <li className="tracking-[-.01em]">
-            Save and see your changes instantly.
-          </li>
-        </ol>
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:w-auto"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=default-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
+  useEffect(() => {
+    if (typeof window !== 'undefined'){
+      try{
+      localStorage.setItem('tasks', JSON.stringify(tasks));
+    }catch(error){
+      console.error('Error saving to localStorage: ', error);
+    }
+    }
+  }, [tasks]);
+
+  const addTask = () =>{
+    if (newTask.trim() === '') return; 
+    setTasks([...tasks, {id: Date.now(), text: newTask, completed: false,
+      priority: newTaskPriority
+    }]);
+    setNewTask('');
+    setNewTaskPriority('Medium');
+  };
+  const toggleComplete = (id: number) => {
+  setTasks(tasks.map(task =>
+    task.id === id ? { ...task, completed: !task.completed } : task
+  ));
+};
+  const deleteTask = (id: number) => {
+  setTasks(tasks.filter(task => task.id !== id));
+};
+  const startEditing = (id: number, text: string) => {
+    setEditingTaskId(id);
+    setEditingTaskText(text);
+  };
+  const saveEdit = (id:number) => {
+    if (editingTaskText.trim() === '') return;
+    setTasks(tasks.map((task: Task) => 
+    task.id === id ? {...task, text: editingTaskText} : task ));
+    setEditingTaskId(null);
+    setEditingTaskText('');
+  };
+  const cancelEdit = () => {
+    setEditingTaskId(null);
+    setEditingTaskText('');
+  };
+
+return (
+    <div className="min-h-screen bg-gray-100 flex items-center justify-center">
+      <div className="bg-white p-8 rounded-lg shadow-lg w-full max-w-md">
+        <h1 className="text-2xl font-bold mb-4 text-center">To-Do List</h1>
+
+        <div className="flex mb-4 space-x-2">
+          <input
+            type="text"
+            value={newTask}
+            onChange={(e) => setNewTask(e.target.value)}
+            placeholder="Add a new task..."
+            className="flex-1 p-2 border border-gray-300 rounded-lg focus:outline-none"
+          />
+          <select
+            value={newTaskPriority}
+            onChange={(e) => setNewTaskPriority(e.target.value as 'Low' | 'Medium' | 'High')}
+            className="p-2 border border-gray-300 rounded-lg"
           >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
-            />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 w-full sm:w-auto md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=default-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
+            <option value="Low">Low</option>
+            <option value="Medium">Medium</option>
+            <option value="High">High</option>
+          </select>
+          <button
+            onClick={addTask}
+            className="bg-blue-500 text-white p-2 rounded-r-lg hover:bg-blue-600"
           >
-            Read our docs
-          </a>
+            Add
+          </button>
         </div>
-      </main>
-      <footer className="row-start-3 flex gap-[24px] flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=default-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=default-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=default-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
+
+        <ul className="space-y-2">
+          {tasks.map((task: Task) => (
+            <li
+              key={task.id}
+              className={`flex items-center justify-between p-3 rounded-lg ${
+                task.priority === 'High' ? 'bg-red-50' :
+                task.priority === 'Medium' ? 'bg-yellow-50' :
+                'bg-green-50'
+              }`}
+            >
+              {editingTaskId === task.id ? (
+                <div className="flex flex-1 space-x-2">
+                  <input
+                    type="text"
+                    value={editingTaskText}
+                    onChange={(e) => setEditingTaskText(e.target.value)}
+                    className="flex-1 p-2 border border-gray-300 rounded-lg focus:outline-none"
+                  />
+                  <button
+                    onClick={() => saveEdit(task.id)}
+                    className="bg-green-500 text-white p-2 rounded-lg hover:bg-green-600"
+                  >
+                    Save
+                  </button>
+                  <button
+                    onClick={cancelEdit}
+                    className="bg-gray-500 text-white p-2 rounded-lg hover:bg-gray-600"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              ) : (
+                <>
+                  <span className={`flex-1 ${task.completed ? 'line-through text-gray-500' : ''}`}>
+                    {task.text} ({task.priority})
+                  </span>
+                  <div className="flex space-x-2">
+                    <button
+                      onClick={() => startEditing(task.id, task.text)}
+                      className="text-blue-500 hover:text-blue-700"
+                    >
+                      Edit
+                    </button>
+                    <button
+                      onClick={() => toggleComplete(task.id)}
+                      className="text-green-500 hover:text-green-700"
+                    >
+                      {task.completed ? 'Undo' : 'Done'}
+                    </button>
+                    <button
+                      onClick={() => deleteTask(task.id)}
+                      className="text-red-500 hover:text-red-700"
+                    >
+                      Delete
+                    </button>
+                  </div>
+                </>
+              )}
+            </li>
+          ))}
+        </ul>
+      </div>
     </div>
   );
 }
